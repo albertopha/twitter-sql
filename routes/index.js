@@ -2,16 +2,17 @@
 var express = require('express');
 var router = express.Router();
 var tweetBank = require('../tweetBank');
-var client = require('../db');
+var client = require('../db/');
 
 module.exports = function makeRouterWithSockets (io) {
+
   // a reusable function
   function respondWithAllTweets (req, res, next){
-    client.query('SELECT * FROM tweets', function (err, result) {
-      if (err) return next(err); // pass errors to Express
-      var tweets = result.rows;
-      console.log(result.rows);    /*******/
-      res.render('index', { title: 'Twitter.js', tweets: tweets, showForm: true });
+    var allTheTweets = tweetBank.list();
+    res.render('index', {
+      title: 'Twitter.js',
+      tweets: allTheTweets,
+      showForm: true
     });
   }
 
@@ -21,43 +22,23 @@ module.exports = function makeRouterWithSockets (io) {
 
   // single-user page
   router.get('/users/:username', function(req, res, next){
-    var queries = 'SELECT * FROM users JOIN tweets ON users.id = tweets.user_id WHERE users.name = $1';
-    client.query(queries, [req.params.username], function(err, result){
-      if(err) return next(err);
-      var tweets = result.rows;
-      res.render('index', {
-        title: 'Twitter.js',
-        tweets: tweets,
-        showForm: true,
-        username: req.params.username
-      });
-    })
+    var tweetsForName = tweetBank.find({ name: req.params.username });
+    res.render('index', {
+      title: 'Twitter.js',
+      tweets: tweetsForName,
+      showForm: true,
+      username: req.params.username
+    });
   });
 
   // single-tweet page
   router.get('/tweets/:id', function(req, res, next){
-    var queries = 'SELECT * FROM users JOIN tweets ON users.id = tweets.user_id WHERE users.id = $1';
-    client.query(queries, [req.params.id], function(err, result){
-      if(err) return next(err);
-      var tweets = result.rows;
-      res.render('index', {
-        title: 'Twitter.js',
-        tweets: tweets
-      });
-    })
-  });
-
-  // create a new tweet with correct UserID
-  router.post('/', function(req, res, next){
-    var name = req.body.name, content = req.body.content;
-    var queries = 'INSERT INTO tweets (user_id, content) VALUES ($1, $2)';
-    client.query(queries, [name, content], function (err, data) {
-      
+    var tweetsWithThatId = tweetBank.find({ id: Number(req.params.id) });
+    res.render('index', {
+      title: 'Twitter.js',
+      tweets: tweetsWithThatId // an array of only one element ;-)
     });
-    queries = 'SELECT * FROM users JOIN tweets ON users.id = tweets.user_id WHERE users.id = $1';
-    client.query(queries, [req.params.])
-    
-  })
+  });
 
   // create a new tweet
   router.post('/tweets', function(req, res, next){
